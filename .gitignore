@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+!.env.*.example
+backend/data/*
+!backend/data/.gitkeep
+!backend/data/README.md
+tmp/
+.DS_Store
+Thumbs.db
+.idea/
+

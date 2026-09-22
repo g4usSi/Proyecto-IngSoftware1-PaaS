@@ -1,0 +1,31 @@
+name: smartstorage
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: smartstorage
+      POSTGRES_USER: smartstorage
+      POSTGRES_PASSWORD: smartstorage_local
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartstorage -d smartstorage"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["worker"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
