@@ -8,7 +8,7 @@ export function createAuthController(service) {
       res.json({ data: await service.login(req.body) });
     },
     async logout(req, res) {
-      res.json({ data: await service.logout(req.user) });
+      res.json({ data: await service.logout(req.session) });
     },
     async me(req, res) {
       res.json({ data: await service.getCurrentUser(req.user) });

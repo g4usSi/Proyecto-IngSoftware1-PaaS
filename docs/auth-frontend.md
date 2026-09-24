@@ -14,8 +14,10 @@ Convenciones generales (ya cubiertas por `apiRequest()` de `services/api.js`):
 | Endpoint | Estado |
 | --- | --- |
 | `POST /api/auth/register` | Implementado (Bloque 1) |
-| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Pendiente (Bloque 2), responden `501 AUTH_NOT_IMPLEMENTED` |
+| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Implementado (Bloque 2) |
 | `POST /api/auth/verify-email`, `forgot-password`, `reset-password` | Pendiente, responden `501 AUTH_NOT_IMPLEMENTED` |
+
+Las rutas privadas de otros módulos (`/api/files`, `/api/subscriptions/me`) ya exigen el token: sin él responden `401`, no `501`.
 
 ## `POST /api/auth/register`
 
@@ -76,6 +78,93 @@ Notas:
 
 Debe cumplir todo esto: entre 8 y 128 caracteres, al menos una minúscula, una mayúscula, un número y un símbolo (cualquier carácter que no sea letra, número ni espacio). Conviene mostrarla en el formulario antes de enviar.
 
+## Cómo se envía el token
+
+Tras iniciar sesión, guarda `token` y envíalo en **todas** las peticiones privadas:
+
+```
+Authorization: Bearer <token>
+```
+
+- El token dura lo que indique `expiresAt` (por defecto 1 hora). No hay renovación: al vencer, hay que iniciar sesión de nuevo.
+- Ante cualquier `401` en una ruta privada (`AUTH_REQUIRED`, `TOKEN_INVALID`, `TOKEN_EXPIRED`), borra el token guardado y lleva al usuario a `/login`.
+- El rol (`client` o `admin`) sale del servidor en cada petición. Para decidir qué mostrar, usa `user.role` de la respuesta de login o de `GET /api/auth/me`.
+- `apiRequest()` de `services/api.js` aún no envía este encabezado; hay que añadirlo (es parte del frontend, no lo toqué).
+
+## `POST /api/auth/login`
+
+Inicia sesión. **No requiere token.**
+
+Cuerpo:
+
+```json
+{ "email": "lany@example.com", "password": "Clave#Segura1" }
+```
+
+El correo se limpia igual que en el registro (espacios y mayúsculas no importan).
+
+Éxito: `200`
+
+```json
+{
+  "data": {
+    "token": "eyJhbGciOi...",
+    "expiresAt": "2026-09-24T13:00:00.000Z",
+    "user": {
+      "id": "3f1c1c1e-0000-4000-8000-000000000001",
+      "name": "Lany Pérez",
+      "email": "lany@example.com",
+      "role": "client",
+      "active": true,
+      "emailVerified": false,
+      "createdAt": "2026-09-24T12:00:00.000Z"
+    }
+  }
+}
+```
+
+| Estado | `code` | Cuándo | Mensaje |
+| --- | --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | Falta el correo o la contraseña | `El correo electrónico y la contraseña son obligatorios.` |
+| 401 | `INVALID_CREDENTIALS` | Contraseña incorrecta **o** correo inexistente (misma respuesta a propósito) | `Correo electrónico o contraseña incorrectos.` |
+| 403 | `ACCOUNT_DISABLED` | Contraseña correcta pero la cuenta está desactivada | `Tu cuenta está desactivada. Contacta al administrador.` |
+| 429 | `TOO_MANY_ATTEMPTS` | 5 intentos fallidos seguidos con ese correo | `Demasiados intentos fallidos. Inténtalo de nuevo en N minutos.` |
+| 503 | `AUTH_NOT_CONFIGURED` | El servidor no tiene `JWT_SECRET` | `La autenticación no está configurada en el servidor (falta JWT_SECRET).` |
+
+Límite de intentos: tras 5 fallos con el mismo correo, ese correo queda bloqueado 15 minutos (aunque luego se escriba la contraseña correcta). Un inicio de sesión correcto reinicia el contador. Muestra el `message` tal cual: ya incluye el tiempo restante.
+
+## `POST /api/auth/logout`
+
+Cierra la sesión: el token deja de valer en el servidor. **Requiere token.** Sin cuerpo.
+
+Éxito: `200`
+
+```json
+{ "data": { "loggedOut": true } }
+```
+
+Después, borra el token del cliente. Si se reutiliza, responde `401 TOKEN_INVALID`. Otras sesiones del mismo usuario (otros dispositivos) siguen activas.
+
+## `GET /api/auth/me`
+
+Devuelve el usuario de la sesión actual. **Requiere token.** Útil para restaurar la sesión al recargar la página.
+
+Éxito: `200`, con el mismo objeto `user` que devuelve el login dentro de `data`:
+
+```json
+{ "data": { "id": "...", "name": "Lany Pérez", "email": "lany@example.com", "role": "client", "active": true, "emailVerified": false, "createdAt": "2026-09-24T12:00:00.000Z" } }
+```
+
+## Errores de cualquier ruta privada
+
+| Estado | `code` | Cuándo | Mensaje |
+| --- | --- | --- | --- |
+| 401 | `AUTH_REQUIRED` | No se envió el encabezado `Authorization: Bearer ...` | `Debes iniciar sesión para acceder a este recurso.` |
+| 401 | `TOKEN_INVALID` | Token falso, alterado, cerrado con logout o de un usuario que ya no existe | `La sesión no es válida. Inicia sesión de nuevo.` |
+| 401 | `TOKEN_EXPIRED` | Token vencido | `La sesión expiró. Inicia sesión de nuevo.` |
+| 403 | `ACCOUNT_DISABLED` | La cuenta se desactivó con la sesión abierta | `Tu cuenta está desactivada. Contacta al administrador.` |
+| 403 | `FORBIDDEN` | El rol no tiene permiso (rutas de administrador) | `No tienes permiso para realizar esta acción.` |
+
 ## Cuenta activa o desactivada
 
-Toda cuenta nueva se crea con `active: true`. El bloqueo de inicio de sesión para cuentas desactivadas llega con el login (Bloque 2).
+Toda cuenta nueva se crea con `active: true`. Una cuenta desactivada no puede iniciar sesión (`403 ACCOUNT_DISABLED`) y su token deja de funcionar. La activación y desactivación desde el panel de administración llega en el Bloque 4.

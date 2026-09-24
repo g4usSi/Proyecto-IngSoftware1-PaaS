@@ -4,10 +4,10 @@ import { createAuthRepository } from './auth.repository.js';
 import { createAuthService } from './auth.service.js';
 import { createAuthController } from './auth.controller.js';
 
-export function createAuthRouter(database) {
+export function createAuthRouter(database, { tokens, loginLimiter }) {
   const router = Router();
   const repository = createAuthRepository(database);
-  const service = createAuthService(repository);
+  const service = createAuthService({ repository, tokens, loginLimiter });
   const controller = createAuthController(service);
   router.post('/register', controller.register);
   router.post('/login', controller.login);

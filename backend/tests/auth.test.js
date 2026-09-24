@@ -1,52 +1,13 @@
 import assert from 'node:assert/strict';
-import { once } from 'node:events';
 import test from 'node:test';
-import { createApp } from '../src/app.js';
 import { hashPassword, verifyPassword } from '../src/modules/auth/password.js';
 import { passwordProblems } from '../src/modules/auth/auth.validation.js';
+import { createFakeDatabase, postJson, withApi } from './helpers/fake-auth-database.js';
 
 const VALID = { name: '  Lany Pérez ', email: '  Lany@Example.COM ', password: 'Clave#Segura1' };
 
-// BD falsa en memoria: solo entiende las dos consultas que usa el repository de auth.
-function createFakeDatabase({ failInsertWith } = {}) {
-  const users = new Map();
-  const calls = [];
-  return {
-    users,
-    calls,
-    async query(sql, params) {
-      calls.push({ sql, params });
-      if (/^\s*SELECT/i.test(sql)) {
-        const user = users.get(params[0]);
-        return { rows: user ? [user] : [] };
-      }
-      if (/^\s*INSERT INTO users/i.test(sql)) {
-        if (failInsertWith) throw Object.assign(new Error('duplicate key value'), { code: failInsertWith });
-        const [name, email, password_hash] = params;
-        const user = {
-          id: '3f1c1c1e-0000-4000-8000-000000000001', name, email, password_hash,
-          role: 'client', active: true, email_verified: false, created_at: new Date('2026-09-24T12:00:00Z'),
-        };
-        users.set(email, user);
-        return { rows: [user] };
-      }
-      throw new Error(`Consulta inesperada: ${sql}`);
-    },
-  };
-}
-
-async function withApi(t, database) {
-  const server = createApp({ database }).listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  t.after(() => new Promise((resolve) => server.close(resolve)));
-  const base = `http://127.0.0.1:${server.address().port}`;
-  return (pathname, options) => fetch(`${base}${pathname}`, options);
-}
-
 function register(request, body) {
-  return request('/api/auth/register', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
+  return postJson(request, '/api/auth/register', body);
 }
 
 test('registro crea una cuenta activa, normaliza datos y nunca expone ni guarda la contraseña en claro', async (t) => {

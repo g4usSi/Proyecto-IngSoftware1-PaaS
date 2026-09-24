@@ -51,12 +51,26 @@ export function readEnv(source = process.env) {
     }
   }
 
+  const jwtSecret = source.JWT_SECRET?.trim() || undefined;
+  if (jwtSecret && jwtSecret.length < 32) {
+    throw new Error('JWT_SECRET debe tener al menos 32 caracteres.');
+  }
+  if (nodeEnv === 'production' && !jwtSecret) {
+    throw new Error('JWT_SECRET es obligatorio en producción.');
+  }
+  const jwtExpiresIn = source.JWT_EXPIRES_IN?.trim() || '1h';
+  if (!/^[1-9]\d*[smhd]$/.test(jwtExpiresIn)) {
+    throw new Error('JWT_EXPIRES_IN debe ser un número seguido de s, m, h o d (por ejemplo 1h).');
+  }
+
   return Object.freeze({
     nodeEnv,
     host: source.HOST || '127.0.0.1',
     port,
     corsOrigins,
     databaseUrl,
+    jwtSecret,
+    jwtExpiresIn,
     storageRoot: path.resolve(backendRoot, source.STORAGE_ROOT || './data/objects'),
   });
 }
