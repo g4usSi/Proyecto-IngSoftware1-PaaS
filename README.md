@@ -50,6 +50,8 @@ La configuración de ejemplo coincide con `compose.yaml`: puerto **5433** en el 
 
 `dev:demo` prepara dos cuentas locales y arranca API + frontend con la demostración habilitada **solo durante ese comando**. En Mi biblioteca, seleccionar Demo Storage A o B, subir una imagen y descargar su WebP. Repetir con la otra cuenta y el mismo archivo conserva una sola copia física. Las cuentas y sus imágenes persisten entre ejecuciones. `npm run dev` arranca con la demo desactivada por defecto. No hay contraseñas demo ni acceso al panel administrativo mediante esas cuentas.
 
+Al iniciar o reiniciar la API en modo demo, la terminal muestra la dirección de la API y el enlace directo al frontend: <http://127.0.0.1:5173/app/storage>. Vite también imprime su dirección cuando arranca.
+
 ### Base de datos instalada localmente
 
 Crear una base de desarrollo vacía, por ejemplo con la utilidad `createdb` de PostgreSQL:
@@ -72,6 +74,7 @@ La aplicación no crea ni modifica bases automáticamente al arrancar. Una segun
 | `npm run dev:demo` | Preparar dos cuentas y ejecutar la demostración local de Storage |
 | `npm run check` | Sintaxis backend y compilación frontend |
 | `npm test` | Contratos/configuración/demo; añadir `TEST_DATABASE_URL` para incluir Storage con BD real |
+| `npm run test:storage` | Ejecutar las 21 pruebas con PostgreSQL local en 5433; crea y elimina una base temporal propia |
 | `npm run build` | Compilación de React en `frontend/dist` |
 | `npm run db:migrate` | Aplicar migraciones a la BD configurada |
 | `npm run db:seed:demo` | Preparar las dos cuentas locales sin activar la demostración |

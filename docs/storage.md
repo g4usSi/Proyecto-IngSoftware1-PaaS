@@ -82,6 +82,8 @@ npm test
 
 La suite de Storage requiere además `TEST_DATABASE_URL` explícita hacia una base **de pruebas**. Nunca toma automáticamente `DATABASE_URL`. Crea y elimina esquemas temporales de nombre aleatorio y archivos temporales propios; el usuario de pruebas necesita permiso para crear esquemas.
 
+Si PostgreSQL del `compose.yaml` está en ejecución en `localhost:5433`, basta con `npm run test:storage`: el comando crea una base temporal de nombre aleatorio con la conexión local de `backend/.env`, ejecuta las 21 pruebas y elimina esa base. No requiere que la terminal encuentre el ejecutable `docker`.
+
 ```powershell
 $env:TEST_DATABASE_URL = 'postgresql://usuario:clave@127.0.0.1:puerto/base_de_pruebas'
 npm test
