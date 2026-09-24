@@ -32,7 +32,7 @@ export function createApp({ database = defaultDatabase, corsOrigins = env.corsOr
     res.json({ data: { status: 'ready', database: 'connected' } });
   });
 
-  app.use('/api/auth', createAuthRouter());
+  app.use('/api/auth', createAuthRouter(database));
   app.use('/api/files', createStorageRouter());
   app.use('/api', createSubscriptionsRouter(database));
   app.use(notFound);
